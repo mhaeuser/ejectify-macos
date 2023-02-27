@@ -92,22 +92,26 @@ class ExternalVolume {
         guard let diskInfo = DADiskCopyDescription(disk) as? [NSString: Any] else {
             return nil
         }
-        
-        guard let name = diskInfo[kDADiskDescriptionVolumeNameKey] as? String,
-              let uuid = diskInfo[kDADiskDescriptionVolumeUUIDKey]
-        else {
+
+        if let name = diskInfo[kDADiskDescriptionVolumeNameKey] as? String,
+           let uuid = diskInfo[kDADiskDescriptionVolumeUUIDKey] {
+            guard name != VolumeReservedNames.EFI.rawValue else {
+                return nil
+            }
+           
+            let volumeUuid = uuid as! CFUUID
+            guard let id = CFUUIDCreateString(kCFAllocatorDefault, volumeUuid) else {
+                return nil
+            }
+            
+            return ExternalVolume(disk: disk, id: id as String, name: name)
+        } else if let network = diskInfo[kDADiskDescriptionVolumeNetworkKey] as? Bool, network
+                  let path = diskInfo[kDADiskDescriptionVolumePathKey] as? URL {
+            let name = path.absoluteString
+            let id   = "network." + path.absoluteString
+            return ExternalVolume(disk: disk, id: id, name: name)
+        } else {
             return nil
         }
-        
-        guard name != VolumeReservedNames.EFI.rawValue else {
-            return nil
-        }
-       
-        let volumeUuid = uuid as! CFUUID
-        guard let id = CFUUIDCreateString(kCFAllocatorDefault, volumeUuid) else {
-            return nil
-        }
-        
-        return ExternalVolume(disk: disk, id: id as String, name: name)
     }
 }
